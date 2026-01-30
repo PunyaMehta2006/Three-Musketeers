@@ -1,5 +1,5 @@
+.env
+backend/.env
 data/
-backend/trials_10k.json
-.DS_Store
 __pycache__/
-*.pyc
+node_modules/
