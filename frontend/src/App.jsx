@@ -1,16 +1,35 @@
-import {useState, useEffect} from 'react'
+import React, { useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
+import Navbar from './components/navbar';
+import HeroPage from './components/HeroPage';
+import './index.css';
+import SplashScreen from './components/SplashScreen';
+
 function App() {
-  const [message,setMessage] = useState('WAIT')
-    useEffect(() => {
-    fetch('http://127.0.0.1:8000/')
-      .then(response => response.json())
-      .then(data => setMessage(data.message))
-      .catch(error => setMessage('Error fetching message'))
-  },[])
+  
+  // track if splash screen is showing
+  const [showSplash, setShowSplash] = useState(true);
+
+  // what to show on screen
+  let content;
+  if (showSplash) {
+    content = <SplashScreen key="splash" onComplete={() => setShowSplash(false)} />;
+  } else {
+    content = (
+      <div key="main-content">
+        <Navbar />
+        <HeroPage />
+      </div>
+    );
+  }
+
   return (
-    <div style={{padding:'20px', fontFamily: 'Arial',textAlign: 'center'}}>
-      <h1>backend status:{message}</h1>
+    <div className="min-h-screen bg-gray-50 text-gray-900">
+      <AnimatePresence mode='wait'>
+        {content}
+      </AnimatePresence>
     </div>
-  )
+  );
 }
-export default App
+
+export default App;
