@@ -1,0 +1,12 @@
+{
+  "name": "three-musketeers-root",
+  "version": "1.0.0",
+  "scripts": {
+    "client": "cd frontend && npm run dev",
+    "server": "cd backend && python3 main.py",
+    "dev": "concurrently \"npm run server\" \"npm run client\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}
