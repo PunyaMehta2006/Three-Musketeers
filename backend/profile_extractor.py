@@ -13,7 +13,7 @@ if not GOOGLE_API_KEY:
     raise ValueError("⚠️ GEMINI_API_KEY not found in .env file. Please add it.")
 genai.configure(api_key=GOOGLE_API_KEY)
 # 2. USE THE LITE MODEL (Higher free tier limits)
-model = genai.GenerativeModel('models/gemini-2.0-flash-lite')
+model = genai.GenerativeModel('models/gemini-flash-latest')
 def extract_profile_from_image(image_bytes, max_retries=3):
     """
     Agent 1 Logic: Precise extraction using the Gemini Flash Lite model.
