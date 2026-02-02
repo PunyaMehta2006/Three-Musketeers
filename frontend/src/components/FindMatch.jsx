@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom'; // Added for smooth navigation
-import { 
-  UploadCloud, 
-  FileText, 
-  User, 
-  MapPin, 
-  Activity, 
-  Calendar, 
-  CheckCircle2, 
+import {
+  UploadCloud,
+  FileText,
+  User,
+  MapPin,
+  Activity,
+  Calendar,
+  CheckCircle2,
   ArrowRight,
   Loader2
 } from 'lucide-react';
@@ -16,7 +16,7 @@ import NetworkBackground from './NetworkBackground';
 import axios from 'axios';
 
 const FindMatch = () => {
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
   const [isDragging, setIsDragging] = useState(false);
   const [file, setFile] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
@@ -30,40 +30,43 @@ const FindMatch = () => {
   });
   const handleFileUpload = async (e) => {
     const uploadedFile = e.target.files ? e.target.files[0] : null;
-    
+
     if (uploadedFile) {
       setFile(uploadedFile);
       setIsScanning(true);
-      
+
       try {
         // 1. Prepare the file for the API
         const formDataPayload = new FormData();
         formDataPayload.append("file", uploadedFile); // 'file' matches the backend parameter
 
         // 2. Send to Backend (Agent 1 & 2)
-        const response = await axios.post("http://127.0.0.1:8000/analyze", formDataPayload, {
+        const response = await axios.post("http://127.0.0.1:8000/api/upload-and-match", formDataPayload, {
           headers: { "Content-Type": "multipart/form-data" },
         });
 
         // 3. Extract the Agent's answer
-        const { profile, trials } = response.data;
-        
-        console.log(" Agent Results:", response.data); // Check console to see the magic
-
-        // 4. Auto-fill the Form with Real Data
+        const { extraction, matching } = response.data;
+        // Check if extraction succeeded
+        if (!extraction.success) {
+          alert(extraction.error || "Failed to extract patient data");
+          return;
+        }
+        const profile = extraction.profile;
+        const trials = matching?.trials || [];
         setFormData({
           age: profile.age || '',
           gender: profile.gender || 'select',
           location: profile.location || '',
-          condition: profile.conditions ? profile.conditions.join(', ') : '', // Convert array to string
-          history: `Conditions: ${profile.conditions?.join(', ')}. Meds: ${profile.medications?.map(m => m.name).join(', ')}`
+          condition: profile.conditions ? profile.conditions[0] : '', // First condition only
+          history: profile.conditions?.join(', ') || ''
         });
+        setFoundTrials(trials);
+        console.log(" Extraction confidence:", extraction.confidence);
+        console.log(" Missing fields:", extraction.missing_fields);
+        console.log(" Found trials:", trials.length);
+        console.log("Trials saved to state:", trials); // Debug check
 
-        
-
-          setFoundTrials(trials); // <--- ADD THIS LINE!
-          console.log("Trials saved to state:", trials); // Debug check
-        
         // OPTIONAL: You might want to store the 'trials' somewhere to pass to the next page
         // For now, we just auto-fill the form.
 
@@ -96,39 +99,39 @@ const FindMatch = () => {
     }
   };
 
-  
-  
+
+
 
   // Update handleFileUpload to save trials too:
   // Inside the try block above, add: setFoundTrials(trials);
 
   const handleSubmit = () => {
-    navigate('/results', { 
-      state: { 
+    navigate('/results', {
+      state: {
         userData: formData,    // The profile
         trials: foundTrials    // The list of matched trials <--- CRITICAL
-      } 
-    }); 
+      }
+    });
   };
   return (
     // FIX 1: Added h-screen and overflow-hidden to main wrapper to prevent body scroll
     <div className="relative w-full h-screen bg-white font-sans selection:bg-indigo-100 selection:text-indigo-900 overflow-hidden pt-28 pb-12 px-6">
-      
+
       <NetworkBackground />
 
       {/* Main Container */}
       <div className="relative z-10 max-w-6xl mx-auto h-full flex flex-col justify-center">
-        
+
         {/* Header */}
         <div className="text-center mb-6 shrink-0">
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-4xl md:text-5xl font-light text-slate-900 mb-4"
           >
             Let's build your <span className="font-serif italic text-[#475569]">Profile</span>.
           </motion.h1>
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
@@ -139,27 +142,26 @@ const FindMatch = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start h-auto max-h-[70vh]">
-          
+
           {/* ---------------- LEFT COL: UPLOAD ZONE ---------------- */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
             className="lg:col-span-5 h-full"
           >
-            <div className={`relative h-full min-h-[400px] rounded-3xl border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center p-8 text-center group bg-white/50 backdrop-blur-sm ${
-              isDragging 
-                ? 'border-indigo-500 bg-indigo-50/50 scale-[1.02]' 
+            <div className={`relative h-full min-h-[400px] rounded-3xl border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center p-8 text-center group bg-white/50 backdrop-blur-sm ${isDragging
+                ? 'border-indigo-500 bg-indigo-50/50 scale-[1.02]'
                 : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50/50'
-            }`}
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
+              }`}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
             >
-              
-              <input 
-                type="file" 
+
+              <input
+                type="file"
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
                 onChange={handleFileUpload}
                 accept=".pdf,.jpg,.png,.doc"
@@ -185,20 +187,20 @@ const FindMatch = () => {
                   </div>
                 ) : file ? (
                   <div className="space-y-2">
-                     <h3 className="text-lg font-bold text-slate-800">Extraction Complete</h3>
-                     <p className="text-xs text-slate-500 flex items-center justify-center gap-2">
-                       <FileText className="w-3 h-3" /> {file.name}
-                     </p>
-                     <button 
-                        onClick={(e) => {
-                          e.preventDefault(); 
-                          setFile(null); 
-                          setFormData({ age: '', gender: 'select', location: '', condition: '', history: '' });
-                        }}
-                        className="text-xs text-red-500 font-bold hover:underline mt-2 z-30 relative"
-                      >
-                        Remove & Upload New
-                      </button>
+                    <h3 className="text-lg font-bold text-slate-800">Extraction Complete</h3>
+                    <p className="text-xs text-slate-500 flex items-center justify-center gap-2">
+                      <FileText className="w-3 h-3" /> {file.name}
+                    </p>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setFile(null);
+                        setFormData({ age: '', gender: 'select', location: '', condition: '', history: '' });
+                      }}
+                      className="text-xs text-red-500 font-bold hover:underline mt-2 z-30 relative"
+                    >
+                      Remove & Upload New
+                    </button>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -215,7 +217,7 @@ const FindMatch = () => {
           </motion.div>
 
           {/* ---------------- RIGHT COL: MANUAL FORM ---------------- */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 }}
@@ -224,10 +226,10 @@ const FindMatch = () => {
             {/* FIX 2: Added max-h-[65vh] and overflow-y-auto here */}
             {/* This ensures the CARD scrolls internally if content expands, keeping the page fixed. */}
             <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 p-8 relative max-h-[65vh] overflow-y-auto custom-scrollbar">
-              
+
               {/* Highlight if Auto-filled */}
               {file && !isScanning && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   className="bg-emerald-50 border border-emerald-100 rounded-lg p-3 mb-6 flex items-center gap-3"
@@ -238,17 +240,17 @@ const FindMatch = () => {
               )}
 
               <div className="space-y-6">
-                
+
                 {/* Row 1: Age & Gender */}
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Age</label>
                     <div className="relative">
                       <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         value={formData.age}
-                        onChange={(e) => setFormData({...formData, age: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, age: e.target.value })}
                         className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                         placeholder="24"
                       />
@@ -258,9 +260,9 @@ const FindMatch = () => {
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gender</label>
                     <div className="relative">
                       <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <select 
+                      <select
                         value={formData.gender}
-                        onChange={(e) => setFormData({...formData, gender: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
                         className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none"
                       >
                         <option value="select" disabled>Select</option>
@@ -277,10 +279,10 @@ const FindMatch = () => {
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Current Location</label>
                   <div className="relative">
                     <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={formData.location}
-                      onChange={(e) => setFormData({...formData, location: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                       className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                       placeholder="e.g. Mumbai, Maharashtra"
                     />
@@ -292,30 +294,30 @@ const FindMatch = () => {
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Primary Diagnosis / Condition</label>
                   <div className="relative">
                     <Activity className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={formData.condition}
-                      onChange={(e) => setFormData({...formData, condition: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
                       className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                       placeholder="e.g. Type 2 Diabetes"
                     />
                   </div>
                 </div>
 
-                 {/* Medical History */}
-                 <div className="space-y-2">
+                {/* Medical History */}
+                <div className="space-y-2">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Brief Medical History</label>
-                  <textarea 
+                  <textarea
                     rows={4}
                     value={formData.history}
-                    onChange={(e) => setFormData({...formData, history: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, history: e.target.value })}
                     className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none"
                     placeholder="List previous treatments, allergies, or genetic markers..."
                   />
                 </div>
 
                 {/* CTA Button */}
-                <button 
+                <button
                   onClick={handleSubmit}
                   disabled={!formData.condition || !formData.location} // Basic validation
                   className="w-full py-4 bg-[#475569] text-white rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-slate-700 hover:scale-[1.02] transition-all shadow-lg shadow-slate-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
