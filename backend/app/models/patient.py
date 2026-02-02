@@ -96,7 +96,7 @@ class ManualPatientInput(BaseModel):
             medications=medications,
             lab_values=lab_values,
             income_bracket=self.income_bracket
-        )``
+        )
 
 
 class PatientExtractionResult(BaseModel):
