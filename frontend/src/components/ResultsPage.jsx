@@ -20,39 +20,84 @@ const ResultsPage = () => {
   const { userData, trials } = location.state || { userData: {}, trials: [] };
 
   // 2. THE ADAPTER (SAFE VERSION)
-  const matches = useMemo(() => {
-    if (!trials || trials.length === 0) return [];
-
-    return trials.map((t) => {
-      // Logic to extract city/hospital
-      const locationStr = t.locations && t.locations.length > 0 ? t.locations[0] : "Global Study";
-      const hospitalName = locationStr.split(',')[0] || "Research Center";
-
-      return {
-        id: t.id,
-        title: t.title,
-        
-        // Use real score or default to 85
-        matchScore: t.match_score || 85, 
-
-        hospital: hospitalName,
-        location: locationStr,
-        type: "Interventional Study",
-        
-        // GENERATE TAGS (Fixed to prevent undefined error)
-        logicTags: [
-          { label: "Condition", value: "Exact Match", color: "bg-emerald-100 text-emerald-700" },
-          { label: "Location", value: "Regional", color: "bg-blue-100 text-blue-700" },
-          { label: "Urgency", value: "Recruiting", color: "bg-amber-100 text-amber-700" }
-        ],
-
-        // Use real insight or fallback
-        aiInsight: t.ai_insight || `Recruiting patients with ${t.condition}.`,
-        
-        originalSummary: t.summary
-      };
+const matches = useMemo(() => {
+  if (!trials || trials.length === 0) return [];
+  return trials.map((t) => {
+    const locationStr = t.locations && t.locations.length > 0 ? t.locations[0] : "Global Study";
+    const hospitalName = locationStr.split(',')[0] || "Research Center";
+    // Extract eligibility status (Agent 3)
+    const eligibilityStatus = t.eligibility?.status || "UNKNOWN";
+    const eligibilityConfidence = t.eligibility?.confidence || 0;
+    
+    // Extract diversity info (Agent 5)
+    const diversityPriority = t.diversity?.priority_level || "STANDARD";
+    const diversityScore = t.diversity?.final_score || 85;
+    
+    // Extract explanation (Agent 4)
+    const explanation = t.explanation?.summary || "No explanation available";
+    const statusLabel = t.explanation?.status_label || eligibilityStatus;
+    
+    // Generate tags based on actual eligibility
+    const logicTags = [];
+    
+    // Eligibility tag
+    if (eligibilityStatus === "ELIGIBLE") {
+      logicTags.push({ 
+        label: "Eligibility", 
+        value: "✓ Qualified", 
+        color: "bg-emerald-100 text-emerald-700" 
+      });
+    } else if (eligibilityStatus === "POSSIBLY_ELIGIBLE") {
+      logicTags.push({ 
+        label: "Eligibility", 
+        value: "? Possibly", 
+        color: "bg-amber-100 text-amber-700" 
+      });
+    } else if (eligibilityStatus === "NOT_ELIGIBLE") {
+      logicTags.push({ 
+        label: "Eligibility", 
+        value: "✗ Not Qualified", 
+        color: "bg-red-100 text-red-700" 
+      });
+    }
+    
+    // Diversity priority tag
+    if (diversityPriority === "HIGH") {
+      logicTags.push({ 
+        label: "Diversity", 
+        value: "🌟 High Priority", 
+        color: "bg-indigo-100 text-indigo-700" 
+      });
+    } else if (diversityPriority === "MEDIUM") {
+      logicTags.push({ 
+        label: "Diversity", 
+        value: "Medium Priority", 
+        color: "bg-blue-100 text-blue-700" 
+      });
+    }
+    
+    // Location tag
+    logicTags.push({ 
+      label: "Location", 
+      value: "Regional", 
+      color: "bg-slate-100 text-slate-700" 
     });
-  }, [trials]);
+    return {
+      id: t.nct_id,
+      title: t.title,
+      matchScore: Math.round(diversityScore),  // Use diversity score
+      hospital: hospitalName,
+      location: locationStr,
+      type: t.phase || "Interventional Study",
+      logicTags: logicTags,
+      aiInsight: explanation,  // Use Agent 4 explanation
+      eligibilityStatus: eligibilityStatus,
+      eligibilityConfidence: eligibilityConfidence,
+      diversityPriority: diversityPriority,
+      originalData: t  // Keep full trial data
+    };
+  });
+}, [trials]);
 
   return (
     <div className="relative w-full min-h-screen bg-white font-sans pt-32 pb-12 px-6 md:px-12 flex flex-col">

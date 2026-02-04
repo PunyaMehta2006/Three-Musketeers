@@ -208,7 +208,7 @@ const HeroPage = () => {
                 </div>
 
                 <div className="text-center mt-4">
-                  <div className="text-2xl font-light text-slate-800">10k+</div>
+                  <div className="text-2xl font-light text-slate-800">7k+</div>
                   <div className="text-[8px] uppercase tracking-widest text-slate-400">Studies Indexed</div>
                 </div>
               </div>

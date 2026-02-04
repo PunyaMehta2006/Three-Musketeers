@@ -5,20 +5,48 @@ import re
 import asyncio
 from typing import Dict, Any
 from datetime import datetime
+from dotenv import load_dotenv 
+import os
 
+load_dotenv()
+
+# Configure Gemini
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+
+# Debug: Check if API key is loaded
+if GEMINI_API_KEY:
+    print(f"✅ GEMINI_API_KEY loaded for Agent 3")
+else:
+    print("❌ WARNING: GEMINI_API_KEY is empty or not found in .env file")
+
+# Import Google Generative AI SDK (same as Agent 1)
 try:
-    from google import genai
-except Exception:
+    import google.generativeai as genai
+    print("✅ Google Generative AI SDK imported successfully (Agent 3)")
+except ImportError as e:
+    print(f"❌ Failed to import google.generativeai: {e}")
+    genai = None
+except Exception as e:
+    print(f"❌ Unexpected error importing genai: {e}")
     genai = None
 
-client = None
+model = None
 MODEL_NAME = "gemini-flash-latest"
 
-if genai:
+# Initialize Gemini model (same pattern as Agent 1)
+if genai and GEMINI_API_KEY:
     try:
-        client = genai.Client(api_key='AIzaSyCvvkzMQd5BmjYVyM1zOKim8jNO9tlj050')
-    except Exception:
-        client = None
+        print(f"🔄 Attempting to initialize Gemini model: {MODEL_NAME}...")
+        genai.configure(api_key=GEMINI_API_KEY)
+        model = genai.GenerativeModel(MODEL_NAME)
+        print(" Gemini model initialized successfully (Agent 3)!")
+    except Exception as e:
+        print(f" Failed to initialize Gemini model: {type(e).__name__}: {e}")
+        model = None
+elif not genai:
+    print(" Gemini SDK not available - using fallback eligibility logic")
+elif not GEMINI_API_KEY:
+    print(" GEMINI_API_KEY not configured - using fallback eligibility logic")
 
 ELIGIBILITY_PROMPT_TEMPLATE = """
 You are an expert clinical trial eligibility checker.
@@ -58,7 +86,7 @@ Return ONLY JSON.
 
 async def check_eligibility(patient: Dict, trial: Dict) -> Dict[str, Any]:
 
-    if not client:
+    if not model:
         result = fallback_eligibility_check(patient, trial)
         result["missing_data"].insert(0, {
             "field": "llm_status",
@@ -90,16 +118,15 @@ async def check_eligibility(patient: Dict, trial: Dict) -> Dict[str, Any]:
     )
 
     try:
-        response = await client.aio.models.generate_content(
-            model=MODEL_NAME,
-            contents=prompt,
-            config={
-                "temperature": 0.1,
-                "response_mime_type": "application/json"
-            }
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.GenerationConfig(
+                temperature=0.1,
+                max_output_tokens=2048
+            )
         )
-
-        return parse_eligibility_response(response.text)
+        response_text = response.candidates[0].content.parts[0].text
+        return parse_eligibility_response(response_text)
 
     except Exception as e:
         print(f"[LLM ERROR] {e}")

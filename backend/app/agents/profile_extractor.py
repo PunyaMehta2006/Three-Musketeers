@@ -60,10 +60,13 @@ OUTPUT ONLY VALID JSON (no markdown, no extra text):
   "medications": [
     {"name": "medication name", "dose": "dose", "frequency": "frequency"}
   ] or [],
-  "lab_values": {
-    "HbA1c": {"value": number, "unit": "%"},
-    "blood_pressure": {"systolic": number, "diastolic": number, "unit": "mmHg"}
-  } or {},
+"lab_values": {
+  "HbA1c": {"value": number, "unit": "%"},
+  "fasting_glucose": {"value": number, "unit": "mg/dL"},
+  "blood_pressure": {"value": "systolic/diastolic", "unit": "mmHg"},
+  "cholesterol": {"value": number, "unit": "mg/dL"},
+  "eGFR": {"value": number, "unit": "mL/min"}
+} or {},
   "allergies": ["allergy1"] or []
 }
 
@@ -76,7 +79,7 @@ Document content:
 
 async def extract_patient_profile(file_path: str, file_ext: str) -> PatientExtractionResult:
     """
-    Extract patient profile from uploaded document
+    Extract patient profile from upload ed document
     
     Args:
         file_path: Path to uploaded file
@@ -88,7 +91,7 @@ async def extract_patient_profile(file_path: str, file_ext: str) -> PatientExtra
     try:
         # Extract text/image content
         if file_ext == ".pdf":
-            content = extract_text_from_pdf(file_path)
+            content = extract_text_from_pdf(file_path) 
             if not content.strip():
                 # PDF might be scanned - try as image
                 return await extract_from_image(file_path)

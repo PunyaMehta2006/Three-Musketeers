@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import {
   UploadCloud, FileText, User, MapPin, Activity, Calendar,
   CheckCircle2, ArrowRight, Loader2, Pill, FlaskConical,
-  AlertCircle
+  AlertCircle,
+  CloudCog
 } from 'lucide-react';
 import NetworkBackground from './NetworkBackground';
 import axios from 'axios';
@@ -15,15 +16,15 @@ const FindMatch = () => {
   const [file, setFile] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
   const [foundTrials, setFoundTrials] = useState([]);
-  
+
   const [formData, setFormData] = useState({
     age: '',
     gender: 'select',
     location: '',
-    conditions: '',   
-    medications: '',  
-    lab_values: '',   
-    allergies: ''     
+    conditions: '',
+    medications: '',
+    lab_values: '',
+    allergies: ''
   });
 
   const handleFileUpload = async (e) => {
@@ -37,23 +38,26 @@ const FindMatch = () => {
         const formDataPayload = new FormData();
         formDataPayload.append("file", uploadedFile);
 
-        const response = await axios.post("http://127.0.0.1:8000/api/upload-and-match", formDataPayload, {
+        const response = await axios.post("http://127.0.0.1:8000/api/complete-workflow", formDataPayload, {
           headers: { "Content-Type": "multipart/form-data" },
         });
 
-        const { extraction, matching } = response.data;
-        
+        const { extraction, trials, eligible_count, total_trials_found } = response.data;
         if (!extraction.success) {
           alert(extraction.error || "Failed to extract patient data");
           return;
         }
-
         const p = extraction.profile;
-        const trials = matching?.trials || [];
-
+        // Log agent results
+        console.log("✅ Agent 1: Profile Extracted");
+        console.log("✅ Agent 2: Found", total_trials_found, "trials");
+        console.log("✅ Agent 3-5: Processed", trials.length, "trials");
+        console.log("📊 Eligible trials:", eligible_count);
+        console.log("🎯 Sample trial data:", trials[0]); // Debug log
+        // Show enriched trials (now includes eligibility, diversity, explanation)
+        setFoundTrials(trials);
         const formatMeds = (meds) => meds && meds.length ? meds.map(m => `${m.name} ${m.dose} (${m.frequency})`).join('\n') : '';
-        const formatLabs = (labs) => labs ? Object.entries(labs).map(([k, v]) => `${k}: ${v}`).join('\n') : '';
-
+        const formatLabs = (labs) => labs ? Object.entries(labs).map(([k, v]) => `${k}: ${v.value} ${v.unit || ''}`).join('\n') : '';
         setFormData({
           age: p.age || '',
           gender: p.gender || 'select',
@@ -63,8 +67,6 @@ const FindMatch = () => {
           lab_values: formatLabs(p.lab_values),
           allergies: p.allergies ? p.allergies.join(', ') : ''
         });
-        
-        setFoundTrials(trials);
 
       } catch (error) {
         console.error("API Error:", error);
@@ -107,7 +109,7 @@ const FindMatch = () => {
 
         {/* Header */}
         <div className="text-center mb-6 shrink-0">
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
             className="text-4xl md:text-5xl font-light text-slate-900 mb-4"
           >
@@ -121,23 +123,22 @@ const FindMatch = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start h-auto max-h-[70vh]">
 
           {/* ---------------- LEFT COL: UPLOAD ZONE ---------------- */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}
             className="lg:col-span-5 h-full"
           >
-            <div className={`relative h-full min-h-[400px] rounded-3xl border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center p-8 text-center group bg-white/50 backdrop-blur-sm ${
-                isDragging 
-                  ? 'border-indigo-500 bg-indigo-50/50 scale-[1.02]' 
-                  : 'border-slate-200 hover:border-indigo-400' 
+            <div className={`relative h-full min-h-[400px] rounded-3xl border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center p-8 text-center group bg-white/50 backdrop-blur-sm ${isDragging
+                ? 'border-indigo-500 bg-indigo-50/50 scale-[1.02]'
+                : 'border-slate-200 hover:border-indigo-400'
               }`}
               onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}
             >
               <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20" onChange={handleFileUpload} accept=".pdf,.jpg,.png,.doc" />
-              
+
               <div className={`w-20 h-20 rounded-full bg-white shadow-lg flex items-center justify-center mb-6 transition-transform duration-500 ${isDragging ? 'scale-110' : 'group-hover:scale-110'}`}>
-                {isScanning ? <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" /> : 
-                 file ? <CheckCircle2 className="w-10 h-10 text-emerald-500" /> : 
-                 <UploadCloud className="w-8 h-8 text-indigo-500" />} 
+                {isScanning ? <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" /> :
+                  file ? <CheckCircle2 className="w-10 h-10 text-emerald-500" /> :
+                    <UploadCloud className="w-8 h-8 text-indigo-500" />}
               </div>
 
               <div className="relative z-10">
@@ -164,7 +165,7 @@ const FindMatch = () => {
           </motion.div>
 
           {/* ---------------- RIGHT COL: EDITABLE FORM ---------------- */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}
             className="lg:col-span-7 h-full"
           >
@@ -178,24 +179,24 @@ const FindMatch = () => {
               )}
 
               <div className="space-y-6">
-                
+
                 {/* 1. Demographics */}
                 <div className="flex items-center gap-2 mb-2 border-b border-slate-100 pb-2">
-                   <User className="w-3 h-3 text-[#475569]"/>
-                   <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Patient Profile</h3>
+                  <User className="w-3 h-3 text-[#475569]" />
+                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Patient Profile</h3>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Age <span className="text-red-400">*</span></label>
                     {/* Added px-4 manually here because we removed it from CSS */}
-                    <input type="number" value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} 
+                    <input type="number" value={formData.age} onChange={e => setFormData({ ...formData, age: e.target.value })}
                       className="form-input h-12 px-4" placeholder="--" required />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Gender <span className="text-red-400">*</span></label>
                     {/* Added px-4 manually here */}
-                    <select value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})} className="form-input h-12 px-4 appearance-none cursor-pointer">
+                    <select value={formData.gender} onChange={e => setFormData({ ...formData, gender: e.target.value })} className="form-input h-12 px-4 appearance-none cursor-pointer">
                       <option value="select" disabled>Select</option>
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
@@ -210,7 +211,7 @@ const FindMatch = () => {
                   <div className="relative">
                     <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#475569]" />
                     {/* Using pl-14 (3.5rem) to ensure plenty of space */}
-                    <input type="text" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} 
+                    <input type="text" value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })}
                       className="form-input h-12 pl-10 pr-4" placeholder="e.g. Mumbai, Maharashtra" required />
                   </div>
                 </div>
@@ -219,55 +220,56 @@ const FindMatch = () => {
 
                 {/* 2. Clinical Data */}
                 <div className="space-y-4">
-                  
+
                   {/* Conditions */}
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
-                       <Activity className="w-3 h-3 text-[#475569]"/>
-                       <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Diagnosed Conditions <span className="text-red-400">*</span></label>
+                      <Activity className="w-3 h-3 text-[#475569]" />
+                      <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Diagnosed Conditions <span className="text-red-400">*</span></label>
                     </div>
                     {/* Added px-4 manually here */}
-                    <input type="text" value={formData.conditions} onChange={e => setFormData({...formData, conditions: e.target.value})} 
+                    <input type="text" value={formData.conditions} onChange={e => setFormData({ ...formData, conditions: e.target.value })}
                       className="form-input h-12 px-4" placeholder="e.g. Type 2 Diabetes, Hypertension" />
                   </div>
 
                   {/* Medications */}
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
-                       <Pill className="w-3 h-3 text-[#475569]"/>
-                       <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Current Medications</label>
+                      <Pill className="w-3 h-3 text-[#475569]" />
+                      <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Current Medications</label>
                     </div>
-                    <textarea rows={3} value={formData.medications} onChange={e => setFormData({...formData, medications: e.target.value})} 
+                    <textarea rows={3} value={formData.medications} onChange={e => setFormData({ ...formData, medications: e.target.value })}
                       className="form-textarea p-4" placeholder={`Lisinopril 20mg (Daily)\nMetformin 500mg (Twice Daily)`} />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                     {/* Labs */}
-                     <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
-                           <FlaskConical className="w-3 h-3 text-[#475569]"/>
-                           <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Lab Values</label>
-                        </div>
-                        <textarea rows={2} value={formData.lab_values} onChange={e => setFormData({...formData, lab_values: e.target.value})} 
-                          className="form-textarea p-4" placeholder={`HbA1c: 7.2%\nBP: 130/85`} />
-                     </div>
+                    {/* Labs */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <FlaskConical className="w-3 h-3 text-[#475569]" />
+                        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Lab Values</label>
+                      </div>
+                      <textarea rows={2} value={formData.lab_values} onChange={e => setFormData({ ...formData, lab_values: e.target.value })}
+                       
+                        className="form-textarea p-4" placeholder={`HbA1c: 7.2%\nBP: 130/85`} />
+                    </div>
 
-                     {/* Allergies */}
-                     <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
-                           <AlertCircle className="w-3 h-3 text-[#475569]"/>
-                           <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Allergies</label>
-                        </div>
-                        <textarea rows={2} value={formData.allergies} onChange={e => setFormData({...formData, allergies: e.target.value})} 
-                          className="form-textarea p-4" placeholder="e.g. Penicillin, Peanuts" />
-                     </div>
+                    {/* Allergies */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-3 h-3 text-[#475569]" />
+                        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Allergies</label>
+                      </div>
+                      <textarea rows={2} value={formData.allergies} onChange={e => setFormData({ ...formData, allergies: e.target.value })}
+                        className="form-textarea p-4" placeholder="e.g. Penicillin, Peanuts" />
+                    </div>
                   </div>
                 </div>
 
                 {/* CTA Button */}
-                <button 
+                <button
                   onClick={handleSubmit}
-                  disabled={!isValid} 
+                  disabled={!isValid}
                   className="w-full py-4 bg-[#475569] text-white rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-slate-800 hover:scale-[1.02] transition-all shadow-lg shadow-slate-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2"
                 >
                   Launch Matching Agents <ArrowRight className="w-4 h-4" />
@@ -279,7 +281,7 @@ const FindMatch = () => {
 
         </div>
       </div>
-      
+
       {/* CSS: Removed padding from classes so inline utility classes take effect */}
       <style>{`
         .form-input {

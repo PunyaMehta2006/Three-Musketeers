@@ -29,9 +29,12 @@ def generate_explanation(trial, eligibility, diversity):
 
     missing_data = eligibility.get("missing_data", [])
     for miss in missing_data:
-        concerns.append(
-            miss.get("field") + ": " + miss.get("reason")
-        )
+        # Handle both dict and string formats
+        if isinstance(miss, dict):
+            text = miss.get("field", "Unknown") + ": " + miss.get("reason", "")
+        else:
+            text = str(miss)
+        concerns.append(text)
 
     for item in inclusion:
         if item.get("status") == "FAIL":
@@ -43,8 +46,9 @@ def generate_explanation(trial, eligibility, diversity):
     steps = []
 
     for miss in missing_data:
-        if miss.get("impact") in ["CRITICAL", "HIGH"]:
-            steps.append("Get test or report for " + miss.get("field"))
+        # Handle both dict and string formats
+        if isinstance(miss, dict) and miss.get("impact") in ["CRITICAL", "HIGH"]:
+            steps.append("Get test or report for " + miss.get("field", "required data"))
 
     if trial.get("contact_email"):
         steps.append("Contact trial coordinator at " + trial.get("contact_email"))

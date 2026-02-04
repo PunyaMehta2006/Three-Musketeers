@@ -4,7 +4,13 @@ Agents 1 & 2: Patient Profile Extraction and Trial Matching
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import upload_router, trials_router, matching_router , upload_and_match_router
+from app.routes import (
+    upload_router, 
+    trials_router, 
+    matching_router, 
+    upload_and_match_router,
+    complete_workflow_router
+)
 from app.utils.database import init_db
 # Create FastAPI app
 app = FastAPI(
@@ -25,6 +31,7 @@ app.include_router(upload_router)
 app.include_router(trials_router)
 app.include_router(matching_router)
 app.include_router(upload_and_match_router)
+app.include_router(complete_workflow_router)  # NEW LINE
 
 @app.on_event("startup")
 async def startup_event():

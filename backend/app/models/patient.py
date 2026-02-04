@@ -3,7 +3,7 @@
 
 
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from datetime import date
 
 
@@ -17,7 +17,7 @@ class Medication(BaseModel):
 
 class LabValue(BaseModel):
     #Lab test result
-    value: float
+    value: Union[float, str]
     unit: str
     date: Optional[str] = None
 
@@ -114,3 +114,52 @@ class UploadAndMatchResult(BaseModel):
     extraction: PatientExtractionResult
     matching: Optional[Dict[str, Any]] = None
     total_time_seconds: Optional[float] = None
+
+    
+class TrialWithAnalysis(BaseModel):
+    """
+    Complete trial result with all agent outputs
+    Combines Agent 2 (trial), Agent 3 (eligibility), Agent 5 (diversity), Agent 4 (explanation)
+    """
+    # Basic trial info from Agent 2
+    nct_id: str
+    title: str
+    brief_summary: Optional[str] = None
+    status: str
+    phase: Optional[str] = None
+    conditions: List[str] = Field(default_factory=list)
+    locations: List[str] = Field(default_factory=list)
+    sponsor: Optional[str] = None
+    minimum_age: Optional[str] = None
+    maximum_age: Optional[str] = None
+    gender: Optional[str] = None
+    eligibility_criteria: Optional[str] = None
+    
+    # Agent 3: Eligibility result
+    eligibility: Optional[Dict[str, Any]] = None
+    
+    # Agent 5: Diversity score
+    diversity: Optional[Dict[str, Any]] = None
+    
+    # Agent 4: Human-readable explanation
+    explanation: Optional[Dict[str, Any]] = None
+
+class CompleteWorkflowResult(BaseModel):
+    """
+    Complete workflow response including all 5 agents
+    """
+    # Agent 1 output
+    extraction: PatientExtractionResult
+    
+    # Summary stats
+    total_trials_found: int
+    trials_checked: int
+    eligible_count: int
+    possibly_eligible_count: int
+    not_eligible_count: int
+    
+    # Agent 2-5 combined output
+    trials: List[TrialWithAnalysis] = Field(default_factory=list)
+    
+    # Timing
+    processing_time_seconds: float
